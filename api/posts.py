@@ -5,7 +5,7 @@ from db.shared import db
 from db.models.user_post import UserPost
 from db.models.post import Post
 
-from db.utils import row_to_dict
+from db.utils import row_to_dict, rows_to_list
 from middlewares import auth_required
 
 
@@ -37,3 +37,32 @@ def posts():
     db.session.commit()
 
     return row_to_dict(post), 200
+
+@api.get("/posts")
+@auth_required
+def fetch():
+    # validate user
+    user = g.get("user")
+    if user is None:
+        return abort(401)
+
+    # get query params
+    ids_str = request.args.get("authorIds")
+    sort_by = request.args.get("sortBy", "id")
+    dir = request.args.get("direction", "asc")
+
+    # reverse sort boolean
+    dir_reversed = dir == "desc"
+
+    # add all rows to a set for uniqueness 
+    rows = set()
+    ids = ids_str.split(",")
+    for id in ids:
+        rows.update(Post.get_posts_by_user_id(id))
+
+    # convert to list for ordering
+    results = rows_to_list(rows)
+    results.sort(key=lambda k: k[sort_by], reverse=dir_reversed)
+
+    return jsonify({"posts":results}), 200
+

@@ -8,6 +8,9 @@ from db.models.post import Post
 from db.utils import row_to_dict, rows_to_list
 from middlewares import auth_required
 
+SORT_BY = ["id", "reads", "likes", "popularity"]
+DIRECTION = ["asc", "desc"]
+DELIMITER = ","
 
 @api.post("/posts")
 @auth_required
@@ -54,9 +57,17 @@ def fetch():
     # reverse sort boolean
     dir_reversed = dir == "desc"
 
+    # check for invalid parameters
+    if ids_str is None:
+        return jsonify({"error": "authorIds are required"}), 400
+    if sort_by not in SORT_BY:
+        return jsonify({"error": "Invalid sortBy value"}), 400
+    if dir not in DIRECTION:
+        return jsonify({"error": "Invalid direction value"}), 400
+
     # add all rows to a set for uniqueness 
     rows = set()
-    ids = ids_str.split(",")
+    ids = ids_str.split(DELIMITER)
     for id in ids:
         rows.update(Post.get_posts_by_user_id(id))
 

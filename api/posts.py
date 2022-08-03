@@ -12,6 +12,7 @@ SORT_BY = ["id", "reads", "likes", "popularity"]
 DIRECTION = ["asc", "desc"]
 DELIMITER = ","
 
+
 @api.post("/posts")
 @auth_required
 def posts():
@@ -41,6 +42,7 @@ def posts():
 
     return row_to_dict(post), 200
 
+
 @api.get("/posts")
 @auth_required
 def fetch():
@@ -65,7 +67,7 @@ def fetch():
     if dir not in DIRECTION:
         return jsonify({"error": "Invalid direction value"}), 400
 
-    # add all rows to a set for uniqueness 
+    # add all rows to a set for uniqueness
     rows = set()
     ids = ids_str.split(DELIMITER)
     for id in ids:
@@ -75,7 +77,8 @@ def fetch():
     results = rows_to_list(rows)
     results.sort(key=lambda k: k[sort_by], reverse=dir_reversed)
 
-    return jsonify({"posts":results}), 200
+    return jsonify({"posts": results}), 200
+
 
 @api.patch("/posts/<int:postId>")
 @auth_required
@@ -106,9 +109,13 @@ def update(postId):
     # check for invalid parameters
     if text is not None and not isinstance(text, str):
         return jsonify({"error": "text must be a string"}), 400
-    if tags is not None and not (isinstance(tags, list) and all(isinstance(tag, str) for tag in tags)):
+    if tags is not None and not (
+        isinstance(tags, list) and all(isinstance(tag, str) for tag in tags)
+    ):
         return jsonify({"error": "tags must be an array of strings"}), 400
-    if author_ids is not None and not (isinstance(author_ids, list) and all(isinstance(id, int) for id in author_ids)):
+    if author_ids is not None and not (
+        isinstance(author_ids, list) and all(isinstance(id, int) for id in author_ids)
+    ):
         return jsonify({"error": "authorIds must be an array of author ids"}), 400
 
     # update post with valid json data
@@ -133,5 +140,4 @@ def update(postId):
     db.session.commit()
     result = row_to_dict(post)
     result["authorIds"] = author_ids
-    return jsonify({"post":result}), 200
-
+    return jsonify({"post": result}), 200

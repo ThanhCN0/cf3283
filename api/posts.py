@@ -11,6 +11,7 @@ from middlewares import auth_required
 SORT_BY = ["id", "reads", "likes", "popularity"]
 DIRECTION = ["asc", "desc"]
 DELIMITER = ","
+UPDATEBLE = ["text", "tags"]
 
 @api.post("/posts")
 @auth_required
@@ -76,4 +77,49 @@ def fetch():
     results.sort(key=lambda k: k[sort_by], reverse=dir_reversed)
 
     return jsonify({"posts":results}), 200
+
+@api.patch("/posts/<int:postId>")
+@auth_required
+def update(postId):
+    # check if logged in
+    user = g.get("user")
+    if user is None:
+        return abort(401)
+
+    # get post if exists
+    post = Post.query.get(postId)
+    if post is None:
+        return jsonify({"error": "Post not found"}), 404
+
+    # find all authors of post
+    user_posts = UserPost.query.filter(UserPost.post_id == postId).all()
+
+    # validate user
+    if not any([x.user_id == user.id for x in user_posts]):
+        return jsonify({"error": "User is not author of this post"}), 403
+
+    # update post with valid json data
+    data = request.get_json()
+    for key in UPDATEBLE:
+        if data.get(key, None) is not None:
+            setattr(post, key, data[key])
+
+    # check if authors changed
+    author_ids = data.get("authorIds", None)
+    if author_ids is not None:
+        # delete old and add new authors
+        UserPost.query.filter(UserPost.post_id == postId).delete()
+        for author_id in author_ids:
+            user_post = UserPost(user_id=author_id, post_id=post.id)
+            user_posts.append(user_post)
+    else:
+        # create array of existing author ids
+        author_ids = []
+        for user_post in user_posts:
+            author_ids.append(user_post.user_id)
+
+    db.session.commit()
+    result = row_to_dict(post)
+    result["authorIds"] = author_ids
+    return jsonify({"post":result}), 200
 
